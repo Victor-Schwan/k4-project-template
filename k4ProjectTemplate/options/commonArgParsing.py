@@ -2,6 +2,7 @@ import argparse
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List
+from enum import Enum
 
 # from g4units import rad
 
@@ -12,6 +13,9 @@ from typing import Dict, List
 parser_opt_use_long_det_name = "detname_long"
 parser_opt_use_pub_det_name = "detname_pub"
 
+class AcceleratorName(str, Enum):
+    FCCEE = "FCCee"
+    ILC = "ILC"
 
 @dataclass(frozen=True)
 class HitCollection:
@@ -21,7 +25,7 @@ class HitCollection:
 
 @dataclass(frozen=True)
 class AcceleratorConfig:
-    name: str
+    name: AcceleratorName
     relative_compact_file_dir: Path
     sim_crossing_angle_boost: float
 
@@ -35,6 +39,14 @@ class DetectorModel:
     compact_path: Path
     sub_detector_collections: Dict[str, HitCollection]
 
+    @property
+    def at_fcc(self) -> bool:
+        return self.accelerator.name is AcceleratorName.FCCEE
+
+    @property
+    def at_ilc(self) -> bool:
+        return self.accelerator.name is AcceleratorName.ILC
+
     def get_compact_file_path(self) -> Path:
         return self.accelerator.relative_compact_file_dir / self.compact_path
 
@@ -42,7 +54,7 @@ class DetectorModel:
         return self.accelerator.sim_crossing_angle_boost
 
     def is_accelerator(self, name: str) -> bool:
-        return self.accelerator.name.lower() == name.lower()
+        return self.accelerator.name.value.lower() == name.lower()
 
     def get_name(self, args) -> str:
         if getattr(args, parser_opt_use_long_det_name, False):
@@ -82,10 +94,10 @@ FCC_dir = Path("FCCee") / "ILD_FCCee" / "compact"
 ILC_dir = Path("ILD") / "compact" / "ILD_sl5_v02"
 
 accelerators = {
-    #    "FCCee": AcceleratorConfig("FCCee", FCC_dir, 15.0e-3 * rad),
-    #    "ILC": AcceleratorConfig("ILC", ILC_dir, 7.0e-3 * rad),
-    "FCCee": AcceleratorConfig("FCCee", FCC_dir, 15.0e-3),
-    "ILC": AcceleratorConfig("ILC", ILC_dir, 7.0e-3),
+    # Accelerator.FCCEE: AcceleratorConfig(Accelerator.FCCEE, FCC_dir, 15.0e-3 * rad),
+    # Accelerator.ILC: AcceleratorConfig(Accelerator.ILC, ILC_dir, 7.0e-3 * rad),
+    AcceleratorName.FCCEE: AcceleratorConfig(AcceleratorName.FCCEE, FCC_dir, 15.0e-3),
+    AcceleratorName.ILC: AcceleratorConfig(AcceleratorName.ILC, ILC_dir, 7.0e-3),
 }
 
 sub_det_cols_fcc = {
@@ -106,7 +118,7 @@ registry.register(
         "if1",
         "FCC01",
         "ILD_FCCee_v01",
-        accelerators["FCCee"],
+        accelerators[AcceleratorName.FCCEE],
         Path("ILD_FCCee_v01/ILD_FCCee_v01.xml"),
         sub_det_cols_fcc,
     )
@@ -116,7 +128,7 @@ registry.register(
         "if2",
         "FCC02",
         "ILD_FCCee_v02",
-        accelerators["FCCee"],
+        accelerators[AcceleratorName.FCCEE],
         Path("ILD_FCCee_v02/ILD_FCCee_v02.xml"),
         sub_det_cols_fcc,
     )
@@ -126,7 +138,7 @@ registry.register(
         "v02",
         "ILC02",
         "ILD_l5_v02",
-        accelerators["ILC"],
+        accelerators[AcceleratorName.ILC],
         Path("ILD_l5_v02.xml"),
         sub_det_cols_ilc,
     )
@@ -136,7 +148,7 @@ registry.register(
         "v03",
         "ILC03",
         "ILD_l5_v03",
-        accelerators["ILC"],
+        accelerators[AcceleratorName.ILC],
         Path("ILD_l5_v03.xml"),
         sub_det_cols_ilc,
     )
@@ -146,7 +158,7 @@ registry.register(
         "v05",
         "ILC05",
         "ILD_l5_v05",
-        accelerators["ILC"],
+        accelerators[AcceleratorName.ILC],
         Path("ILD_l5_v05.xml"),
         sub_det_cols_ilc,
     )
