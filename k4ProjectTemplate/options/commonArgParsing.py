@@ -1,8 +1,8 @@
 import argparse
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from typing import Dict, List
-from enum import Enum
 
 # from g4units import rad
 
@@ -13,9 +13,11 @@ from enum import Enum
 parser_opt_use_long_det_name = "detname_long"
 parser_opt_use_pub_det_name = "detname_pub"
 
+
 class AcceleratorName(str, Enum):
     FCCEE = "FCCee"
     ILC = "ILC"
+
 
 @dataclass(frozen=True)
 class HitCollection:
@@ -181,12 +183,12 @@ def add_common_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     )
     det_name_group = parser.add_mutually_exclusive_group()
     det_name_group.add_argument(
-        "--" + parser_opt_use_long_det_name.replace('_',"-"),
+        "--" + parser_opt_use_long_det_name.replace("_", "-"),
         action="store_true",
         help="Use long name for detector models (e.g. ILC02)",
     )
     det_name_group.add_argument(
-        "--" + parser_opt_use_pub_det_name.replace('_',"-"),
+        "--" + parser_opt_use_pub_det_name.replace("_", "-"),
         action="store_true",
         help="Use publication name (longest) for detector models (e.g. ILD_FCCee_v02)",
     )
