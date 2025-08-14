@@ -17,17 +17,17 @@
 # limitations under the License.
 #
 from Gaudi.Configuration import DEBUG
-from k4FWCore import ApplicationMgr
-from k4FWCore import IOSvc
+from k4FWCore import ApplicationMgr, IOSvc
 
 iosvc = IOSvc("IOSvc")
 iosvc.Input = "output_k4test_exampledata.root"
 
 iosvc.CollectionNames = ["ExampleParticles"]
 
-ApplicationMgr(TopAlg=[],
-               EvtSel="NONE",
-               EvtMax=100,
-               ExtSvc=[iosvc],
-               OutputLevel=DEBUG,
-               )
+ApplicationMgr(
+    TopAlg=[],
+    EvtSel="NONE",
+    EvtMax=100,
+    ExtSvc=[iosvc],
+    OutputLevel=DEBUG,
+)

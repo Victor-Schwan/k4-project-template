@@ -16,8 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from Gaudi.Configuration import INFO
 from Configurables import CreateExampleEventData
+from Gaudi.Configuration import INFO
 from k4FWCore import ApplicationMgr, IOSvc
 
 iosvc = IOSvc()
@@ -26,9 +26,10 @@ iosvc.outputCommands = ["keep *"]
 
 producer = CreateExampleEventData("CreateExampleEventData")
 
-ApplicationMgr(TopAlg=[producer],
-               EvtSel="NONE",
-               EvtMax=100,
-               ExtSvc=[iosvc],
-               OutputLevel=INFO,
-               )
+ApplicationMgr(
+    TopAlg=[producer],
+    EvtSel="NONE",
+    EvtMax=100,
+    ExtSvc=[iosvc],
+    OutputLevel=INFO,
+)
