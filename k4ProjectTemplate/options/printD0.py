@@ -4,15 +4,23 @@ from Configurables import TrackD0Printer
 from Gaudi.Configuration import INFO
 from k4FWCore import ApplicationMgr, IOSvc
 
+SI_TRACK_COLL_NAME = "SiTracksCT"
+CLU_TRACK_COLL_NAME = "ClupatraTracks"
+
 iosvc = IOSvc()
 iosvc.Input = str(
-    Path.home()
-    / "promotion/code/ILDConfig/StandardConfig/production/data/test_tracking_3_detmods_V02_REC.edm4hep.root"
+    (
+        Path.home()
+        / "promotion/data"
+        / "2026-04-13-tracking/2026-04-13-fullreco-noECalGap-Clupatra-IF1_REC"
+    ).with_suffix(".edm4hep.root")
 )
 
-iosvc.CollectionNames = ["SiTracks", "ClupatraTracks"]
+iosvc.CollectionNames = [SI_TRACK_COLL_NAME, CLU_TRACK_COLL_NAME]
 
-printer = TrackD0Printer("TrackD0Printer", nStars=40)
+printer = TrackD0Printer(
+    "TrackD0Printer", nStars=40, InputSiTracks=[SI_TRACK_COLL_NAME]
+)
 printer.OutputLevel = INFO
 
 ApplicationMgr(
