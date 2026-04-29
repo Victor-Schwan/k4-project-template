@@ -42,6 +42,8 @@ struct TrackMerger final : k4FWCore::Transformer<TrackColl(const TrackColl&, con
                     },
                     {KeyValue("OutTracks", {"MyCandidateMergedTracks"})}) {}
 
+  Gaudi::Property<bool> m_greedy{this, "Greedy", true, "If true, each track is used only once."};
+
   TrackColl operator()(const TrackColl& inSiTracks, const TrackColl& inCluTracks) const override {
     auto outTracks = TrackColl();
 
@@ -67,7 +69,7 @@ struct TrackMerger final : k4FWCore::Transformer<TrackColl(const TrackColl&, con
       // LOGIC NOTE: This algorithm accepts the FIRST match found within tolerances.
       // It does not perform a global chi2 minimization or search for the "best" match.
       for (size_t iClu = 0; iClu < inCluTracks.size(); iClu++) {
-        if (cluUsed[iClu])
+        if (m_greedy && cluUsed[iClu])
           continue;
 
         const auto trackClu = inCluTracks[iClu];
@@ -90,9 +92,11 @@ struct TrackMerger final : k4FWCore::Transformer<TrackColl(const TrackColl&, con
           newTrack.addToTracks(trackSi);
           newTrack.addToTracks(trackClu);
 
-          cluUsed[iClu] = true;
           matched = true;
-          break; // Exit inner loop: current SiTrack is satisfied
+          if (m_greedy) {
+            cluUsed[iClu] = true;
+            break; // Exit inner loop: current SiTrack is satisfied
+          }
         }
       }
 
