@@ -1,4 +1,5 @@
 import sys
+from itertools import zip_longest
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -28,54 +29,11 @@ except ImportError as e:
 INPUT_FILE_2_ANA = tm.OUTPUT_FILE
 CAND_COLL = tm.CANDIDATE_MERGED_TRACKS_NAME
 REFT_COLL = tm.REFITTED_MERGED_TRACKS_NAME
+SI_COLL = tm.SI_TRACK_COLL_NAME
+CLU_COLL = tm.CLU_TRACK_COLL_NAME
+CLU_W_SI_COLL = "MarlinTrkTracks"
 
 from podio.root_io import Reader
-
-
-def print_track_info(collection_name, tracks):
-    """Prints track information in a formatted table with error handling for missing states."""
-    if not tracks:
-        print(f"\nCollection {collection_name} is empty.")
-        return
-
-    print(f"\n--- Collection: {collection_name} ({len(tracks)} tracks) ---")
-
-    table_data = []
-    headers = ["ID", "Chi2/NDF", "Hits", "D0", "Z0", "Phi", "Omega", "TanL"]
-
-    for track in tracks:
-        # Check if any track states exist before attempting to access index 0
-        if track.trackStates_size() == 0:
-            table_data.append(
-                [
-                    track.getObjectID().index,
-                    f"{track.getChi2():.2f}/{track.getNdf()}",
-                    track.trackerHits_size(),
-                    "NO STATE",
-                    "---",
-                    "---",
-                    "---",
-                    "---",
-                ]
-            )
-            continue
-
-        state = track.getTrackStates(0)
-
-        table_data.append(
-            [
-                track.getObjectID().index,
-                f"{track.getChi2():.2f}/{track.getNdf()}",
-                track.trackerHits_size(),
-                f"{state.D0:.4f}",
-                f"{state.Z0:.4f}",
-                f"{state.phi:.4f}",
-                f"{state.omega:.4e}",
-                f"{state.tanLambda:.4f}",
-            ]
-        )
-
-    print(tabulate(table_data, headers=headers, tablefmt="simple_outline"))
 
 
 def main():
@@ -83,20 +41,86 @@ def main():
         print(f"Error: Output file {INPUT_FILE_2_ANA} not found.")
         return
 
-    reader = Reader(str(INPUT_FILE_2_ANA))
-    events = reader.get("events")
+    events = Reader(str(INPUT_FILE_2_ANA)).get("events")
+
+    # List of collections to compare
+    coll_names = [CAND_COLL, REFT_COLL, SI_COLL, CLU_W_SI_COLL, CLU_COLL]
 
     for i, event in enumerate(events):
         print(f"\n{'#' * 80}\n# Processing Event {i:3} \n{'#' * 80}")
 
-        for coll_name in [CAND_COLL, REFT_COLL]:
+        # Retrieve all collections for this event
+        collections_data = []
+        for name in coll_names:
             try:
-                tracks = event.get(coll_name)
-                print_track_info(coll_name, tracks)
+                collections_data.append(event.get(name))
             except KeyError:
-                print(f"\n[!] Collection {coll_name} not found in event {i}")
-            except Exception as e:
-                print(f"\n[!] Unexpected error analyzing {coll_name}: {e}")
+                print(f"[!] Warning: Collection {name} missing in event {i}")
+
+        # check if lengths are inconsistent
+        lengths = [len(c) if c is not None else 0 for c in collections_data]
+        if len(set(lengths)) > 1:
+            print(
+                "Note: Collections have different sizes: "
+                + ", ".join([f"{n}: {l}" for n, l in zip(coll_names, lengths)])
+            )
+
+        table_data = []
+        headers = ["Coll", "ID", "Chi2/NDF", "Hits", "D0", "Z0", "Phi", "Omega", "TanL"]
+
+        # Use zip_longest to iterate over all collections at once
+        # i-th row contains the i-th track from each collection
+        for i, tracks_group in enumerate(
+            zip_longest(*collections_data, fillvalue=None)
+        ):
+            if i > 0:
+                # Add a separator line between groups of i-th tracks for clarity
+                table_data.append(["-" * 5] * len(headers))
+            for idx, track in enumerate(tracks_group):
+                coll_label = coll_names[idx]
+
+                if track is None:
+                    # Fill row with '-' if the collection is shorter than others
+                    table_data.append([coll_label] + ["-"] * (len(headers) - 1))
+                    continue
+
+                # Process Track Info
+                ndf = track.getNdf()
+                chi2_str = f"{track.getChi2():.2f}/{ndf}"
+                if ndf > 0:
+                    chi2_str += f"={track.getChi2() / ndf:.2f}"
+
+                if track.trackStates_size() == 0:
+                    table_data.append(
+                        [
+                            coll_label,
+                            track.getObjectID().index,
+                            chi2_str,
+                            track.trackerHits_size(),
+                            "NO STATE",
+                            "---",
+                            "---",
+                            "---",
+                            "---",
+                        ]
+                    )
+                else:
+                    state = track.getTrackStates(0)
+                    table_data.append(
+                        [
+                            coll_label,
+                            track.getObjectID().index,
+                            chi2_str,
+                            track.trackerHits_size(),
+                            f"{state.D0:.4f}",
+                            f"{state.Z0:.4f}",
+                            f"{state.phi:.4f}",
+                            f"{state.omega:.4e}",
+                            f"{state.tanLambda:.4f}",
+                        ]
+                    )
+
+        print(tabulate(table_data, headers=headers, tablefmt="simple_outline"))
 
 
 if __name__ == "__main__":
