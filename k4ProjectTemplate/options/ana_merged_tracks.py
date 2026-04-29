@@ -1,5 +1,6 @@
 import sys
 from itertools import zip_longest
+from math import sqrt
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -32,6 +33,7 @@ REFT_COLL = tm.REFITTED_MERGED_TRACKS_NAME
 SI_COLL = tm.SI_TRACK_COLL_NAME
 CLU_COLL = tm.CLU_TRACK_COLL_NAME
 CLU_W_SI_COLL = "MarlinTrkTracks"
+MCP_COLL = "MCParticles"
 
 from podio.root_io import Reader
 
@@ -44,7 +46,7 @@ def main():
     events = Reader(str(INPUT_FILE_2_ANA)).get("events")
 
     # List of collections to compare
-    coll_names = [CAND_COLL, REFT_COLL, SI_COLL, CLU_W_SI_COLL, CLU_COLL]
+    coll_names = [MCP_COLL, REFT_COLL, SI_COLL, CLU_W_SI_COLL, CLU_COLL, CAND_COLL]
 
     for i, event in enumerate(events):
         print(f"\n{'#' * 80}\n# Processing Event {i:3} \n{'#' * 80}")
@@ -75,13 +77,41 @@ def main():
         ):
             if i > 0:
                 # Add a separator line between groups of i-th tracks for clarity
-                table_data.append(["-" * 5] * len(headers))
+                table_data.append(["~" * 5] * len(headers))
             for idx, track in enumerate(tracks_group):
                 coll_label = coll_names[idx]
 
                 if track is None:
                     # Fill row with '-' if the collection is shorter than others
                     table_data.append([coll_label] + ["-"] * (len(headers) - 1))
+                    continue
+
+                if coll_label == MCP_COLL:
+                    if track.getGeneratorStatus() != 1:
+                        # Only analyze stable particles (status=1)
+                        continue
+                    # For muons from a gun, we look at the primary particle (index 0)
+
+                    # Example conversion logic (Simplified for Muon Gun at IP)
+                    # In a real study, you'd calculate D0/Z0 based on track.getVertex()
+                    p_t = sqrt(track.getMomentum().x ** 2 + track.getMomentum().y ** 2)
+                    a = 3e-4  # GeV/c per Tesla, for charge=1
+                    B_z = 2.0  # Tesla, example magnetic field strength
+                    table_data.append(
+                        [
+                            coll_label,
+                            track.getObjectID().index,
+                            "---",
+                            "---",
+                            f"{sqrt(track.getVertex().x ** 2 + track.getVertex().y ** 2):.2f}",  # Placeholders for comparison
+                            f"{track.getVertex().z:.2f}",
+                            "---",
+                            f"|{a * B_z / p_t:.4e}|",  # abs(Omega) ~ a*B_z/pT
+                            # f"{track.getPhi():.4f}",
+                            # f"p:{track.getMomentum().x:.1f}",  # Or calculate Omega
+                            f"{track.getMomentum().z / p_t:.4f}",
+                        ]
+                    )
                     continue
 
                 # Process Track Info
