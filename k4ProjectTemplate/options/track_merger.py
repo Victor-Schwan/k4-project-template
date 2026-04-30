@@ -155,6 +155,13 @@ def main():
     # Start Refitting
     ###########################################################
 
+    # Configs only for refitting
+    track_variation_defs["CluWithSi"] = {
+        "merge_name": CLU_W_SI_TRACKS_NAME,
+        "refit_name": REFITTED_CLU_W_SI_TRACKS_NAME,
+        "rel": REFITTED_CLU_W_SI_REL_NAME,
+    }
+
     # MyRefitter = RefitFinal(
     #    "RefitFinal",
     #    InputTrackCollectionName=CANDIDATE_MERGED_TRACKS_NAME,
