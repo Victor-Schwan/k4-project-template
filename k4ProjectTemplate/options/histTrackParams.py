@@ -12,8 +12,8 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import uproot
-
 from commonArgParsing import add_common_args, detModNames, registry
+
 from plotting import my_line_styles
 from utils import is_outlier
 

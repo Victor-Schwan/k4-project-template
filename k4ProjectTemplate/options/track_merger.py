@@ -1,4 +1,4 @@
-from os import environ
+import sys
 from pathlib import Path
 
 from Configurables import (
@@ -13,74 +13,15 @@ from Gaudi.Configuration import DEBUG, INFO
 from k4FWCore import ApplicationMgr, IOSvc
 from k4MarlinWrapper.io_helpers import IOHandlerHelper
 
-# ### DEFS
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-###########################################################
-# Start Hot Fix
-###########################################################
-
-MISSING_ENCODINGS_KEYS = [
-    "EcalEndcapsCollectionGapHits",
-    "EcalEndcapsCollection",
-    "EcalEndcapsCollectionDigi",
-    "EcalEndcapsCollectionRec",
-    "EcalBarrelCollection",
-    "EcalBarrelCollectionDigi",
-    "EcalBarrelCollectionRec",
-    "EcalBarrelCollectionGapHits",
-    "EcalEndcapRingCollectionDigi",
-    "EcalEndcapRingCollectionRec",
-    "HcalBarrelCollectionDigi",
-    "HcalBarrelCollectionRec",
-    # "HcalBarrelRegCollection",
-    # "HcalEndcapsCollection",
-    "HcalEndcapsCollectionDigi",
-    "HcalEndcapsCollectionRec",
-    # "HcalEndcapRingCollection",
-    "HcalEndcapRingCollectionDigi",
-    "HcalEndcapRingCollectionRec",
-    "LCAL",
-    "MUON",
-]
-MISSING_ENCODINGS = {
-    key: "system:0:5,module:5:3,stave:8:4,tower:12:4,layer:16:6,wafer:22:6,slice:28:4,cellX:32:-16,cellY:48:-16"
-    for key in MISSING_ENCODINGS_KEYS
-}
-
-###########################################################
-# End Hot Fix
-###########################################################
-
-# Collection Names
-SI_TRACK_COLL_NAME = "SiTracksCT"
-CLU_TRACK_COLL_NAME = "ClupatraTracks"
-
-CANDIDATE_GREEDY_MERGED_TRACKS_NAME = "CandidateGreedyMergedTracks"
-REFITTED_GREEDY_MERGED_TRACKS_NAME = "RefittedGreedyMergedTracks"
-REFITTED_GREEDY_MERGED_TRACKS_REL_NAME = "RefittedGreedyMergedTrackRelations"
-
-CANDIDATE_AMBIGUOUS_MERGED_TRACKS_NAME = "CandidateAmbiguousMergedTracks"
-REFITTED_AMBIGUOUS_MERGED_TRACKS_NAME = "RefittedAmbiguousMergedTracks"
-REFITTED_AMBIGUOUS_MERGED_TRACKS_REL_NAME = "RefittedAmbiguousMergedTrackRelations"
-
-CLU_W_SI_TRACKS_NAME = "MarlinTrkTracks"
-REFITTED_CLU_W_SI_TRACKS_NAME = "RefittedCluWithSiTracks"
-REFITTED_CLU_W_SI_REL_NAME = "RefittedCluWithSiTrackRelations"
-
-# IO Paths
-DEFAULT_DATA_DIR = Path.home() / "promotion" / "data"
-DATA_DIR = Path(environ.get("dtDir", DEFAULT_DATA_DIR)) / "2026-04-13-tracking"
-INPUT_FILE = DATA_DIR / "2026-04-13-fullreco-IF1_REC.edm4hep.root"
-OUTPUT_FILE = DATA_DIR / "2026-04-try_track_merging.edm4hep.root"
-
-# k4geo Paths
-REL_PATH_2_DET_MOD_COMPACT = "FCCee/ILD_FCCee/compact/ILD_FCCee_v01/ILD_FCCee_v01.xml"
-DEFAULT_K4GEO_DIR = Path.home() / "promotion" / "code" / "k4geo"
-COMPACT_FILE_DET_MOD_PATH = (
-    Path(environ.get("k4geo_DIR", DEFAULT_K4GEO_DIR)) / REL_PATH_2_DET_MOD_COMPACT
+from config_track_merger import (
+    CLU_TRACK_COLL_NAME,
+    MISSING_ENCODINGS,
+    PATHS,
+    SI_TRACK_COLL_NAME,
+    TRACK_VARIATIONS,
 )
-
-# ### DEFS
 
 
 def main():
@@ -88,86 +29,45 @@ def main():
     algList = []
 
     iosvc = IOSvc()
-    iosvc.Input = str(INPUT_FILE)
-    iosvc.Output = str(OUTPUT_FILE)
+    iosvc.Input = str(PATHS["input"])
+    iosvc.Output = str(PATHS["output"])
     svcList.append(iosvc)
 
     io_handler = IOHandlerHelper(algList, iosvc)
-    io_handler.add_reader([str(INPUT_FILE)])
-    io_handler.add_edm4hep_writer(str(OUTPUT_FILE))
+    io_handler.add_reader([str(PATHS["input"])])
+    io_handler.add_edm4hep_writer(str(PATHS["output"]))
 
     geoSvc = GeoSvc("GeoSvc")
-    geoSvc.detectors = [str(COMPACT_FILE_DET_MOD_PATH)]
+    geoSvc.detectors = [str(PATHS["detmod_compact"])]
     geoSvc.OutputLevel = INFO
     geoSvc.EnableGeant4Geo = False
     svcList.append(geoSvc)
-
-    # iosvc.CollectionNames = [SI_TRACK_COLL_NAME, CLU_TRACK_COLL_NAME]
 
     MyFiller = CellIDEncodingFiller("CellIDEncodingFiller")
     MyFiller.CellIDEncodings = MISSING_ENCODINGS
     algList.append(MyFiller)
 
-    ###########################################################
-    # Start Track Variation Definitions
-    ###########################################################
+    # ------------------------------------------------------------------
+    # Track Merging
+    # ------------------------------------------------------------------
 
-    # Configs for track merging and refitting
-    track_variation_defs = {
-        "Greedy": {
-            "merge_name": CANDIDATE_GREEDY_MERGED_TRACKS_NAME,
-            "refit_name": REFITTED_GREEDY_MERGED_TRACKS_NAME,
-            "rel": REFITTED_GREEDY_MERGED_TRACKS_REL_NAME,
-            "greedy": True,
-        },
-        "Ambiguous": {
-            "merge_name": CANDIDATE_AMBIGUOUS_MERGED_TRACKS_NAME,
-            "refit_name": REFITTED_AMBIGUOUS_MERGED_TRACKS_NAME,
-            "rel": REFITTED_AMBIGUOUS_MERGED_TRACKS_REL_NAME,
-            "greedy": False,
-        },
-    }
-
-    ###########################################################
-    # End Track Variation Definitions
-    ###########################################################
-
-    ###########################################################
-    # Start Track Merging
-    ###########################################################
-
-    for track_type, col in track_variation_defs.items():
+    for track_type, var in TRACK_VARIATIONS.items():
+        if not var["merger"]["enabled"]:
+            continue
+        colls = var["collections"]
         merger = TrackMerger(
             f"{track_type}TrackMerger",
             InputSiTracks=SI_TRACK_COLL_NAME,
             InputCluTracks=CLU_TRACK_COLL_NAME,
-            OutTracks=col["merge_name"],
-            Greedy=col["greedy"],
+            OutTracks=colls["merge_candidates"],
+            Greedy=var["merger"]["greedy"],
         )
         merger.OutputLevel = DEBUG
         algList.append(merger)
 
-    ###########################################################
-    # End Track Merging
-    ###########################################################
-
-    ###########################################################
-    # Start Refitting
-    ###########################################################
-
-    # Configs only for refitting
-    track_variation_defs["CluWithSi"] = {
-        "merge_name": CLU_W_SI_TRACKS_NAME,
-        "refit_name": REFITTED_CLU_W_SI_TRACKS_NAME,
-        "rel": REFITTED_CLU_W_SI_REL_NAME,
-    }
-
-    # MyRefitter = RefitFinal(
-    #    "RefitFinal",
-    #    InputTrackCollectionName=CANDIDATE_MERGED_TRACKS_NAME,
-    #    InputRelationCollectionName=[],
-    #    OutputTrackCollectionName=REFITTED_MERGED_TRACKS_NAME,
-    # )
+    # ------------------------------------------------------------------
+    # Refitting
+    # ------------------------------------------------------------------
 
     SHARED_REFITTING_CONFIG = {
         "EnergyLossOn": ["true"],
@@ -182,24 +82,24 @@ def main():
         "InputTrackRelCollection": [],
     }
 
-    for track_type, col in track_variation_defs.items():
+    for track_type, var in TRACK_VARIATIONS.items():
+        if not var["refitter"]["enabled"]:
+            continue
+        colls = var["collections"]
         refitter = MarlinProcessorWrapper(f"{track_type}Refitter")
         refitter.ProcessorType = "RefitProcessor"
         refitter.Parameters = SHARED_REFITTING_CONFIG | {
-            "InputTrackCollectionName": [col["merge_name"]],
-            "OutputTrackCollectionName": [col["refit_name"]],
-            "OutputTrackRelCollection": [col["rel"]],
+            "InputTrackCollectionName": [colls["merge_candidates"]],
+            "OutputTrackCollectionName": [colls["refit_output"]],
+            "OutputTrackRelCollection": [colls["refit_rel"]],
         }
         refitter.OutputLevel = INFO
         algList.append(refitter)
 
-    ###########################################################
-    # End Refitting
-    ###########################################################
+    # ------------------------------------------------------------------
 
     io_handler.finalize_converters()
 
-    # Use Gaudi Auditor service to get timing information on algorithm execution
     auditorSvc = AuditorSvc()
     svcList.append(auditorSvc)
     auditorSvc.Auditors = [AlgTimingAuditor()]
@@ -211,7 +111,6 @@ def main():
         ExtSvc=svcList,
         OutputLevel=INFO,
     )
-
     app_mgr.AuditAlgorithms = True
     app_mgr.AuditTools = True
     app_mgr.AuditServices = True
