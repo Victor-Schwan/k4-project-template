@@ -40,7 +40,8 @@ COMPACT_FILE_DET_MOD_PATH = (
     Path(environ.get("k4geo_DIR", DEFAULT_K4GEO_DIR)) / REL_PATH_2_DET_MOD_COMPACT
 )
 
-if __name__ == "__main__":
+
+def main():
     svcList = []
     algList = []
 
@@ -164,3 +165,6 @@ if __name__ == "__main__":
     app_mgr.AuditAlgorithms = True
     app_mgr.AuditTools = True
     app_mgr.AuditServices = True
+
+
+main()
