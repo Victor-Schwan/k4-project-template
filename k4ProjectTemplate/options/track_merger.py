@@ -13,24 +13,64 @@ from Gaudi.Configuration import DEBUG, INFO
 from k4FWCore import ApplicationMgr, IOSvc
 from k4MarlinWrapper.io_helpers import IOHandlerHelper
 
+# ### DEFS
+
+###########################################################
+# Start Hot Fix
+###########################################################
+
+MISSING_ENCODINGS_KEYS = [
+    "EcalEndcapsCollectionGapHits",
+    "EcalEndcapsCollection",
+    "EcalEndcapsCollectionDigi",
+    "EcalEndcapsCollectionRec",
+    "EcalBarrelCollection",
+    "EcalBarrelCollectionDigi",
+    "EcalBarrelCollectionRec",
+    "EcalBarrelCollectionGapHits",
+    "EcalEndcapRingCollectionDigi",
+    "EcalEndcapRingCollectionRec",
+    "HcalBarrelCollectionDigi",
+    "HcalBarrelCollectionRec",
+    # "HcalBarrelRegCollection",
+    # "HcalEndcapsCollection",
+    "HcalEndcapsCollectionDigi",
+    "HcalEndcapsCollectionRec",
+    # "HcalEndcapRingCollection",
+    "HcalEndcapRingCollectionDigi",
+    "HcalEndcapRingCollectionRec",
+    "LCAL",
+    "MUON",
+]
 MISSING_ENCODINGS = {
-    "EcalEndcapsCollectionGapHits": "system:0:5,module:5:3,stave:8:4,tower:12:4,layer:16:6,wafer:22:6,slice:28:4,cellX:32:-16,cellY:48:-16",
+    key: "system:0:5,module:5:3,stave:8:4,tower:12:4,layer:16:6,wafer:22:6,slice:28:4,cellX:32:-16,cellY:48:-16"
+    for key in MISSING_ENCODINGS_KEYS
 }
+
+###########################################################
+# End Hot Fix
+###########################################################
 
 # Collection Names
 SI_TRACK_COLL_NAME = "SiTracksCT"
 CLU_TRACK_COLL_NAME = "ClupatraTracks"
-CANDIDATE_GREEDY_MERGED_TRACKS_NAME = "CandidateMergedTracks"
-REFITTED_GREEDY_MERGED_TRACKS_NAME = "RefittedMergedTracks"
-REFITTED_GREEDY_MERGED_TRACKS_REL_NAME = "RefittedMergedTrackRelations"
+
+CANDIDATE_GREEDY_MERGED_TRACKS_NAME = "CandidateGreedyMergedTracks"
+REFITTED_GREEDY_MERGED_TRACKS_NAME = "RefittedGreedyMergedTracks"
+REFITTED_GREEDY_MERGED_TRACKS_REL_NAME = "RefittedGreedyMergedTrackRelations"
+
 CANDIDATE_AMBIGUOUS_MERGED_TRACKS_NAME = "CandidateAmbiguousMergedTracks"
 REFITTED_AMBIGUOUS_MERGED_TRACKS_NAME = "RefittedAmbiguousMergedTracks"
 REFITTED_AMBIGUOUS_MERGED_TRACKS_REL_NAME = "RefittedAmbiguousMergedTrackRelations"
 
+CLU_W_SI_TRACKS_NAME = "MarlinTrkTracks"
+REFITTED_CLU_W_SI_TRACKS_NAME = "RefittedCluWithSiTracks"
+REFITTED_CLU_W_SI_REL_NAME = "RefittedCluWithSiTrackRelations"
+
 # IO Paths
 DEFAULT_DATA_DIR = Path.home() / "promotion" / "data"
 DATA_DIR = Path(environ.get("dtDir", DEFAULT_DATA_DIR)) / "2026-04-13-tracking"
-INPUT_FILE = DATA_DIR / "2026-04-13-fullreco-noECalGap-Clupatra-IF1_REC.edm4hep.root"
+INPUT_FILE = DATA_DIR / "2026-04-13-fullreco-IF1_REC.edm4hep.root"
 OUTPUT_FILE = DATA_DIR / "2026-04-try_track_merging.edm4hep.root"
 
 # k4geo Paths
@@ -39,6 +79,8 @@ DEFAULT_K4GEO_DIR = Path.home() / "promotion" / "code" / "k4geo"
 COMPACT_FILE_DET_MOD_PATH = (
     Path(environ.get("k4geo_DIR", DEFAULT_K4GEO_DIR)) / REL_PATH_2_DET_MOD_COMPACT
 )
+
+# ### DEFS
 
 
 def main():
@@ -70,7 +112,8 @@ def main():
     # Start Track Variation Definitions
     ###########################################################
 
-    TRACK_VARIATION_DEFS = {
+    # Configs for track merging and refitting
+    track_variation_defs = {
         "Greedy": {
             "merge_name": CANDIDATE_GREEDY_MERGED_TRACKS_NAME,
             "refit_name": REFITTED_GREEDY_MERGED_TRACKS_NAME,
@@ -93,7 +136,7 @@ def main():
     # Start Track Merging
     ###########################################################
 
-    for track_type, col in TRACK_VARIATION_DEFS.items():
+    for track_type, col in track_variation_defs.items():
         merger = TrackMerger(
             f"{track_type}TrackMerger",
             InputSiTracks=SI_TRACK_COLL_NAME,
@@ -132,8 +175,8 @@ def main():
         "InputTrackRelCollection": [],
     }
 
-    for track_type, col in TRACK_VARIATION_DEFS.items():
-        refitter = MarlinProcessorWrapper(f"My{track_type}Refitter")
+    for track_type, col in track_variation_defs.items():
+        refitter = MarlinProcessorWrapper(f"{track_type}Refitter")
         refitter.ProcessorType = "RefitProcessor"
         refitter.Parameters = SHARED_REFITTING_CONFIG | {
             "InputTrackCollectionName": [col["merge_name"]],
