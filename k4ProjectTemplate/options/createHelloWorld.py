@@ -16,15 +16,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from Gaudi.Configuration import INFO
 from Configurables import HelloWorldAlg
+from Gaudi.Configuration import INFO
 from k4FWCore import ApplicationMgr
 
 producer = HelloWorldAlg()
 producer.PerEventPrintMessage = "Hello World !"
 
-ApplicationMgr(TopAlg=[producer],
-               EvtSel="NONE",
-               EvtMax=1,
-               OutputLevel=INFO,
-               )
+ApplicationMgr(
+    TopAlg=[producer],
+    EvtSel="NONE",
+    EvtMax=1,
+    OutputLevel=INFO,
+)
